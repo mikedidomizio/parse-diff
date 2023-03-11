@@ -375,6 +375,44 @@ Index: text.txt
     expect(file.chunks[0].changes.length).toBe(1);
   });
 
+  it("should parse Octokit list files of pull request output", function () {
+    // diff is from using Octokit to list files of PR
+    // https://github.com/facebook/react/pull/26368
+    const diff = `@@ -157,7 +157,13 @@ app.all('/', async function (req, res, next) {
+       const rscResponse = await promiseForData;
+       // For other request, we pass-through the RSC payload.
+       res.set('Content-type', 'text/x-component');
+-      rscResponse.pipe(res);
++      rscResponse.on('data', data => {
++        res.write(data);
++        res.flush();
++      });
++      rscResponse.on('end', data => {
++        res.end();
++      });
+     } catch (e) {
+       console.error(\`Failed to proxy request: \${e.stack}\`);
+       res.statusCode = 500;`;
+
+    const files = parse(diff);
+    expect(files.length).toBe(1);
+    const [file] = files;
+    expect(file.chunks[0].content).toBe(
+      "@@ -157,7 +157,13 @@ app.all('/', async function (req, res, next) {"
+    );
+    expect(file.from).toBeUndefined();
+    expect(file.to).toBeUndefined();
+    expect(file.oldMode).toBeUndefined();
+    expect(file.newMode).toBeUndefined();
+    expect(file.deletions).toBe(1);
+    expect(file.additions).toBe(7);
+    expect(file.chunks[0].oldStart).toBe(157);
+    expect(file.chunks[0].oldLines).toBe(7);
+    expect(file.chunks[0].newStart).toBe(157);
+    expect(file.chunks[0].newLines).toBe(13);
+    expect(file.chunks[0].changes.length).toBe(14);
+  });
+
   it("should parse file names for n new empty file", function () {
     const diff = `\
 diff --git a/newFile.txt b/newFile.txt
